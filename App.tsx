@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sparkles, MessageSquare, Megaphone, ChevronRight, X, Heart, Wind, Camera, Info } from 'lucide-react';
+import { Sparkles, MessageSquare, Megaphone, ChevronRight, X, Heart, Wind, Camera, Info, AlertCircle, RefreshCw } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { JourneyEntry, AppView } from './types';
 
@@ -30,6 +30,7 @@ const App: React.FC = () => {
   const [entries, setEntries] = useState<JourneyEntry[]>([]);
   const [currentResult, setCurrentResult] = useState<string | null>(null);
   const [showNotice, setShowNotice] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const handleStartWriting = () => setView(AppView.INPUT);
 
@@ -37,8 +38,15 @@ const App: React.FC = () => {
     if (!text.trim()) return;
     
     setIsProcessing(true);
+    setError(null);
+    
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        throw new Error("API Key tidak ditemukan. Pastikan sudah dikonfigurasi di Environment Variables.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Analisa cerita atau keluhan ini dari warga Jaticempaka: "${text}". 
@@ -74,9 +82,9 @@ const App: React.FC = () => {
       setEntries(prev => [newEntry, ...prev]);
       setCurrentResult(aiResponse);
       setView(AppView.RECAP);
-    } catch (error) {
-      console.error("AI processing failed", error);
-      alert("Maaf, koneksi narasi kita terputus. Coba lagi ya!");
+    } catch (err: any) {
+      console.error("AI processing failed", err);
+      setError(err.message || "Terjadi masalah saat menghubungi server narasi kami.");
     } finally {
       setIsProcessing(false);
     }
@@ -84,37 +92,63 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen selection:bg-pink-200 flex flex-col relative">
-      {/* Initial Beta Notice Modal */}
+      {/* Beta Notice Modal */}
       {showNotice && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-extreme custom-shadow p-6 sm:p-8 relative overflow-hidden animate-in zoom-in duration-300">
-            {/* Background Blob decoration */}
             <div className="absolute -top-10 -left-10 w-24 h-24 bg-[#FFF59D] opacity-30 rounded-full blur-2xl"></div>
-            
             <div className="relative z-10 text-center">
               <div className="bg-[#A5D6A7] w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 custom-shadow">
                 <Info className="text-white" size={24} />
               </div>
               <h2 className="font-syne text-xl mb-3">Halo, Warga! 🌟</h2>
               <p className="text-sm sm:text-base opacity-80 leading-relaxed mb-6">
-                Website ini masih <span className="font-bold text-[#FF9B9B]">beta</span> dan dalam pengembangan. Semua yang ditulis tidak akan tersimpan selagi situs ini belum aktif secara publik. Terima kasih!
+                Website ini masi beta dan masi dalam pengembangan, semua yang ditulis tidak akan tersimpan selagi situs ini belum aktif secara publik, terimakasih.
               </p>
-              
-              <div className="pt-4 border-t border-gray-100 mb-6">
-                <p className="text-[10px] uppercase tracking-widest font-bold opacity-40 mb-2">Tim Balik Layar</p>
-                <div className="flex flex-col gap-1 text-xs">
+              <div className="pt-4 border-t border-gray-100 mb-6 text-left">
+                <p className="text-[10px] uppercase tracking-widest font-bold opacity-40 mb-2 text-center">Tim Balik Layar</p>
+                <div className="flex flex-col gap-1 text-xs px-2">
                   <p><span className="opacity-50">Inisiator:</span> <span className="font-semibold text-[#FF9B9B]">Nofal</span></p>
                   <p><span className="opacity-50">Pengembang:</span> <span className="font-semibold text-[#A5D6A7]">Fahri</span></p>
-                  <p><span className="opacity-50">Konten:</span> <span className="font-semibold text-[#FFF59D] bg-black/5 px-1 rounded">Gita</span></p>
+                  <p><span className="opacity-50">Isi Konten:</span> <span className="font-semibold text-[#FFF59D] bg-black/5 px-1 rounded">Gita</span></p>
                 </div>
               </div>
-
-              <button 
-                onClick={() => setShowNotice(false)}
-                className="w-full bg-black text-white py-3 rounded-full font-bold hover:bg-gray-800 transition-colors active:scale-95"
-              >
-                Paham! ✌️
+              <button onClick={() => setShowNotice(false)} className="w-full bg-[#A5D6A7] text-black py-4 rounded-full font-bold custom-shadow hover-lift active:translate-y-1 transition-all">
+                Siap, Paham! ✌️
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Error Modal */}
+      {error && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-extreme custom-shadow p-8 relative overflow-hidden animate-in slide-in-from-top-4 duration-300">
+            <div className="relative z-10 text-center">
+              <div className="bg-[#FF9B9B] w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 custom-shadow">
+                <AlertCircle className="text-white" size={32} />
+              </div>
+              <h2 className="font-syne text-2xl mb-4">Waduh, Maaf ya!</h2>
+              <p className="text-sm opacity-80 leading-relaxed mb-8">
+                {error.includes("API Key") 
+                  ? "Koneksi narasi terputus karena konfigurasi kunci belum siap. Cek Environment Variables di Vercel!" 
+                  : "Koneksi narasi kita terputus sebentar. Coba kirim ulang ceritanya ya!"}
+              </p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => processJourney(inputText)} 
+                  className="w-full bg-[#A5D6A7] text-black py-4 rounded-full font-bold custom-shadow hover-lift flex items-center justify-center gap-2"
+                >
+                  <RefreshCw size={18} /> Coba Lagi
+                </button>
+                <button 
+                  onClick={() => setError(null)} 
+                  className="w-full text-sm font-semibold opacity-50 hover:opacity-100 py-2"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -122,7 +156,6 @@ const App: React.FC = () => {
 
       {/* Main Layout Container */}
       <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-12 flex flex-col items-center justify-center">
-        
         {view === AppView.LANDING && (
           <div className="text-center relative w-full flex flex-col items-center">
             <div className="flex items-center justify-center gap-2 sm:gap-4 w-full mb-12 sm:mb-20">
@@ -145,7 +178,7 @@ const App: React.FC = () => {
               yang belum terdengar.
             </h1>
             
-            <p className="max-w-md md:max-w-xl mx-auto text-base sm:text-lg md:text-xl opacity-70 mb-8 sm:mb-12 px-4">
+            <p className="max-w-md md:max-w-xl mx-auto text-base sm:text-lg md:text-xl opacity-70 mb-8 sm:mb-12 px-4 text-balance">
               Mari berbagi rasa, tanpa sekat. Perjalanan Jaticempaka adalah tentang kita dan mimpi kita.
             </p>
 
@@ -230,7 +263,6 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
-
       </main>
 
       <footer className="w-full py-6 px-6 text-center sm:text-left">
