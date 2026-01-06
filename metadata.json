@@ -1,0 +1,7 @@
+{
+  "name": "Journey Recap Karang Taruna Jaticempaka",
+  "description": "Sebuah platform rekapan perjalanan komunitas yang cinematic dan emosional, menggunakan palet warna pastel rasta dan desain 3D yang elegan.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
